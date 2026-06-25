@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent知识库材料收集</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; 
+    background: #eef1f8; min-height: 100vh; padding: 30px 20px;
+    position: relative; overflow-x: hidden;
+}
+
+/* 动态背景 */
+body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background: 
+        radial-gradient(ellipse 800px 600px at 20% 10%, rgba(102,126,234,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 600px 500px at 80% 80%, rgba(118,75,162,0.08) 0%, transparent 55%),
+        radial-gradient(ellipse 400px 400px at 50% 50%, rgba(69,199,214,0.06) 0%, transparent 50%);
+}
+
+/* 浮动粒子 */
+.particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.particle {
+    position: absolute; border-radius: 50%; opacity: 0.3;
+    animation: float linear infinite;
+}
+@keyframes float {
+    0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.4; }
+    100% { transform: translateY(-100px) rotate(720deg); opacity: 0; }
+}
+
+.container { max-width: 820px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* 进度条 */
+.progress-bar {
+    position: sticky; top: 0; z-index: 50; 
+    background: rgba(255,255,255,0.9); backdrop-filter: blur(10px);
+    border-radius: 12px; padding: 16px 24px; margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid rgba(255,255,255,0.6);
+}
+.progress-steps {
+    display: flex; align-items: center; justify-content: space-between; position: relative;
+}
+.progress-steps::before {
+    content: ''; position: absolute; top: 14px; left: 40px; right: 40px; height: 3px;
+    background: #e8eaed; border-radius: 2px;
+}
+.progress-track {
+    position: absolute; top: 14px; left: 40px; height: 3px;
+    background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 2px;
+    transition: width 0.5s ease; width: 0%;
+}
+.progress-step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative; z-index: 1;
+}
+.progress-step .step-dot {
+    width: 28px; height: 28px; border-radius: 50%; 
+    background: #e8eaed; border: 3px solid #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: #999;
+    transition: all 0.4s; box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+.progress-step.active .step-dot {
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    box-shadow: 0 3px 12px rgba(102,126,234,0.4); transform: scale(1.1);
+}
+.progress-step.done .step-dot {
+    background: #22c98a; color: #fff;
+    box-shadow: 0 3px 10px rgba(34,201,138,0.3);
+}
+.progress-step .step-label {
+    font-size: 11px; color: #999; font-weight: 500; transition: color 0.3s;
+}
+.progress-step.active .step-label, .progress-step.done .step-label { color: #333; }
+
+.header { text-align: center; margin-bottom: 36px; animation: slideDown 0.6s ease-out; }
+.header h1 { 
+    font-size: 32px; margin-bottom: 10px; font-weight: 800;
+    background: linear-gradient(135deg, #4a5bbd 0%, #2d8f9e 50%, #5a3d8a 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    background-size: 200% 200%; animation: gradientShift 4s ease infinite;
+}
+.header p { color: #666; font-size: 15px; line-height: 1.6; }
+
+@keyframes slideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:none; } }
+@keyframes gradientShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+
+.card { 
+    background: rgba(255,255,255,0.85); border-radius: 16px; padding: 28px 32px; 
+    margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.6);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    animation: cardFadeIn 0.5s ease-out both;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.card:hover { border-color: rgba(102,126,234,0.3); box-shadow: 0 8px 32px rgba(102,126,234,0.1); }
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
+@keyframes cardFadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+
+.card h2 { font-size: 18px; color: #1a1a2e; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.card .subtitle { color: #888; font-size: 13px; margin-bottom: 20px; }
+
+/* Form elements */
+.form-row { display: flex; gap: 16px; margin-bottom: 16px; }
+.form-row .form-group { flex: 1; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 14px; font-weight: 500; color: #333; margin-bottom: 6px; }
+.form-group label .req { color: #e74c3c; }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 12px 16px; border: 1px solid #e0e3e8; border-radius: 10px;
+    font-size: 14px; transition: all 0.3s; outline: none;
+    background: rgba(255,255,255,0.8); color: #333;
+}
+.form-group input::placeholder, .form-group textarea::placeholder { color: #aaa; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { 
+    border-color: #667eea; background: #fff;
+    box-shadow: 0 0 0 3px rgba(102,126,234,0.12);
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
+
+/* Industry selector */
+.industry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.industry-btn {
+    padding: 14px 12px; border: 1px solid #e0e3e8; border-radius: 12px; text-align: center;
+    cursor: pointer; transition: all 0.3s; font-size: 14px; 
+    background: rgba(255,255,255,0.7); color: #555;
+    position: relative; overflow: hidden;
+}
+.industry-btn::before {
+    content: ''; position: absolute; inset: 0; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+    opacity: 0; transition: opacity 0.3s;
+}
+.industry-btn:hover { border-color: rgba(102,126,234,0.5); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102,126,234,0.1); }
+.industry-btn:hover::before { opacity: 1; }
+.industry-btn.active { 
+    border-color: #667eea; 
+    background: linear-gradient(135deg, #667eea, #764ba2); 
+    color: #fff; transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102,126,234,0.35);
+}
+.industry-btn .icon { font-size: 26px; display: block; margin-bottom: 6px; position: relative; z-index: 1; }
+
+/* Material checklist */
+.material-guide { display: none; animation: fadeIn 0.5s ease-out; }
+.material-guide.show { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+.material-list { display: flex; flex-direction: column; gap: 12px; }
+.material-item {
+    border: 1px solid #e8eaed; border-radius: 12px; padding: 16px 20px;
+    display: flex; align-items: flex-start; gap: 14px; transition: all 0.3s;
+    background: rgba(255,255,255,0.5);
+}
+.material-item:hover { border-color: rgba(102,126,234,0.4); background: rgba(102,126,234,0.04); transform: translateX(4px); }
+.material-item .mi-icon { font-size: 28px; flex-shrink: 0; }
+.material-item .mi-content { flex: 1; }
+.material-item .mi-title { font-size: 15px; font-weight: 600; color: #333; }
+.material-item .mi-desc { font-size: 12px; color: #888; margin-top: 3px; }
+.material-item .mi-upload { margin-top: 10px; }
+
+/* Upload button */
+.upload-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+    background: rgba(102,126,234,0.08); border: 1px dashed #667eea; border-radius: 8px;
+    color: #667eea; font-size: 13px; cursor: pointer; transition: all 0.3s;
+}
+.upload-btn:hover { background: #667eea; color: #fff; border-style: solid; box-shadow: 0 4px 12px rgba(102,126,234,0.3); }
+.upload-btn input { display: none; }
+
+/* File tags */
+.file-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.file-tag {
+    display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px;
+    background: rgba(34,201,138,0.1); border-radius: 14px; font-size: 12px; color: #2d9a6e;
+    border: 1px solid rgba(34,201,138,0.2); animation: tagPop 0.3s ease-out;
+}
+@keyframes tagPop { from { transform: scale(0.8); opacity:0; } to { transform: scale(1); opacity:1; } }
+.file-tag .remove { cursor: pointer; color: #999; margin-left: 4px; transition: color 0.2s; }
+.file-tag .remove:hover { color: #e74c3c; }
+
+/* Bulk upload area */
+.bulk-upload {
+    border: 2px dashed #d0d5dd; border-radius: 16px; padding: 36px; text-align: center;
+    cursor: pointer; transition: all 0.3s; margin-top: 16px;
+    background: rgba(255,255,255,0.4);
+}
+.bulk-upload:hover { border-color: #667eea; background: rgba(102,126,234,0.04); }
+.bulk-upload.dragover { border-color: #667eea; background: rgba(102,126,234,0.08); transform: scale(1.01); }
+.bulk-upload .bu-icon { font-size: 40px; margin-bottom: 10px; animation: bounce 2s ease infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.bulk-upload .bu-text { font-size: 14px; color: #555; }
+.bulk-upload .bu-hint { font-size: 12px; color: #999; margin-top: 6px; }
+
+/* Submit */
+.submit-section { text-align: center; padding: 24px 0; }
+.btn-submit {
+    padding: 16px 52px; 
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.3s;
+    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+    position: relative; overflow: hidden;
+}
+.btn-submit::before {
+    content: ''; position: absolute; inset: -2px;
+    background: linear-gradient(135deg, #667eea, #45c7d6, #764ba2, #667eea);
+    border-radius: 14px; z-index: -1; background-size: 300% 300%;
+    animation: borderGlow 3s ease infinite;
+    opacity: 0; transition: opacity 0.3s;
+}
+.btn-submit:hover::before { opacity: 1; }
+@keyframes borderGlow { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+.btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 35px rgba(102, 126, 234, 0.6); }
+.btn-submit:active { transform: translateY(0); }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* Success */
+.success-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
+.success-overlay.show { display: flex; animation: overlayIn 0.3s ease; }
+@keyframes overlayIn { from{opacity:0} to{opacity:1} }
+.success-box { 
+    background: #fff; border-radius: 20px; padding: 44px 54px; text-align: center; 
+    max-width: 420px; position: relative;
+    animation: boxPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+@keyframes boxPop { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
+.success-box .icon { font-size: 52px; margin-bottom: 14px; animation: celebrate 0.6s ease 0.3s both; }
+@keyframes celebrate { from{transform:scale(0) rotate(-30deg)} to{transform:scale(1) rotate(0)} }
+.success-box h3 { font-size: 24px; margin-bottom: 10px; color: #1a1a2e; }
+.success-box p { color: #666; font-size: 14px; line-height: 1.7; }
+.close-btn {
+    position: absolute; top: 16px; right: 20px; font-size: 20px; color: #999;
+    cursor: pointer; width: 32px; height: 32px; display: flex; align-items: center;
+    justify-content: center; border-radius: 50%; transition: all 0.2s;
+}
+.close-btn:hover { background: #f0f0f0; color: #333; }
+</style>
+</head>
+<body>
+<div class="particles" id="particles"></div>
+<div class="container">
+    <div class="header">
+        <h1>🤖 Agent 知识库材料收集</h1>
+        <p>告诉我们您的行业和场景，上传相关材料，我们将为您搭建专属AI Agent</p>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar" id="progressBar">
+        <div class="progress-steps">
+            <div class="progress-track" id="progressTrack"></div>
+            <div class="progress-step active" data-step="1">
+                <div class="step-dot">1</div>
+                <div class="step-label">基本信息</div>
+            </div>
+            <div class="progress-step" data-step="2">
+                <div class="step-dot">2</div>
+                <div class="step-label">选择行业</div>
+            </div>
+            <div class="progress-step" data-step="3">
+                <div class="step-dot">3</div>
+                <div class="step-label">上传材料</div>
+            </div>
+            <div class="progress-step" data-step="4">
+                <div class="step-dot">4</div>
+                <div class="step-label">提交</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 1: 基本信息 -->
+    <div class="card">
+        <h2>📋 基本信息</h2>
+        <div class="subtitle">请填写您的企业名称</div>
+        <div class="form-group">
+            <label>企业名称 <span class="req">*</span></label>
+            <input type="text" id="company" placeholder="您的公司名称">
+        </div>
+    </div>
+
+    <!-- Card 2: 选择行业 -->
+    <div class="card">
+        <h2>🏢 选择您的行业</h2>
+        <div class="subtitle">选择行业后，我们会告诉您需要准备哪些材料</div>
+        <div class="industry-grid" id="industryGrid">
+            <div class="industry-btn" data-val="电器"><span class="icon">🔌</span>电器</div>
+            <div class="industry-btn" data-val="电商"><span class="icon">🛒</span>电商/消费</div>
+            <div class="industry-btn" data-val="教育"><span class="icon">📚</span>教育</div>
+            <div class="industry-btn" data-val="金融"><span class="icon">💰</span>金融</div>
+            <div class="industry-btn" data-val="医疗"><span class="icon">🏥</span>大健康/医疗</div>
+            <div class="industry-btn" data-val="餐饮"><span class="icon">🍜</span>餐饮</div>
+            <div class="industry-btn" data-val="科技"><span class="icon">💻</span>科技/互联网</div>
+            <div class="industry-btn" data-val="制造"><span class="icon">🏭</span>制造业</div>
+            <div class="industry-btn" data-val="跨境"><span class="icon">🌏</span>跨境业务</div>
+            <div class="industry-btn" data-val="政务"><span class="icon">🏛️</span>政务/公共</div>
+            <div class="industry-btn" data-val="其他"><span class="icon">📁</span>其他</div>
+        </div>
+    </div>
+
+    <!-- Card 3: 材料上传（根据行业动态显示） -->
+    <div class="card material-guide" id="materialCard">
+        <h2>📁 上传知识库材料</h2>
+        <div class="subtitle" id="materialHint">根据您的行业，我们建议您准备以下材料：</div>
+        
+        <div class="material-list" id="materialList"></div>
+
+        <div class="bulk-upload" id="bulkUpload">
+            <div class="bu-icon">📦</div>
+            <div class="bu-text">或者直接拖拽/点击上传打包文件</div>
+            <div class="bu-hint">支持 ZIP/RAR 打包上传，也可以多选散文件 | PDF、Word、Excel、图片均可</div>
+            <input type="file" id="bulkInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar,.jpg,.jpeg,.png,.pptx" hidden>
+        </div>
+        <div class="file-tags" id="bulkFiles"></div>
+    </div>
+
+    <!-- Card 4: 场景描述 -->
+    <div class="card material-guide" id="scenarioCard">
+        <h2>💬 简单描述您的需求</h2>
+        <div class="subtitle">不用太正式，简单说说您希望Agent帮您做什么就好</div>
+        <div class="form-group">
+            <label>Agent主要用来做什么？</label>
+            <textarea id="scenario" placeholder="例如：我们想做一个售后客服机器人，客户买了我们的空调后如果遇到问题，可以先问AI，AI根据我们的产品说明书来回答"></textarea>
+        </div>
+        <div class="form-group">
+            <label>其他补充（选填）</label>
+            <textarea id="extra" rows="3" placeholder="任何您觉得重要的信息，比如客服风格、特殊要求等"></textarea>
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-section material-guide" id="submitSection">
+        <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">确认提交 🚀</button>
+    </div>
+</div>
+
+<!-- Success overlay -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-box">
+        <span class="close-btn" onclick="closeSuccess()">✕</span>
+        <div class="icon">🎉</div>
+        <h3>提交成功！</h3>
+        <p>我们已收到您的材料<br>工作人员将在 <strong>1-2个工作日</strong> 内与您联系<br>为您搭建专属Agent</p>
+        <p style="margin-top:16px;font-size:13px;color:#888">如需补充材料，可关闭此窗口继续提交</p>
+    </div>
+</div>
+
+<script>
+// 行业对应的材料清单
+const INDUSTRY_MATERIALS = {
+    "电器": [
+        { icon: "📖", title: "产品说明书/使用手册", desc: "各型号产品的使用说明、安装指引" },
+        { icon: "📊", title: "产品参数表", desc: "型号、规格、功率等技术参数" },
+        { icon: "❓", title: "FAQ/常见问题", desc: "客户经常问的问题及标准答案" },
+        { icon: "🔧", title: "售后/维修流程", desc: "报修流程、退换货政策、保修条款" },
+        { icon: "💰", title: "价格表/产品目录", desc: "在售产品价格及分类" },
+    ],
+    "电商": [
+        { icon: "🛍️", title: "商品信息/详情页", desc: "商品描述、卖点、规格" },
+        { icon: "📦", title: "物流/退换货政策", desc: "发货时效、退货流程、运费规则" },
+        { icon: "❓", title: "FAQ/常见问题", desc: "客户下单、支付、售后常见问题" },
+        { icon: "🎯", title: "促销/活动规则", desc: "优惠券使用规则、满减活动说明" },
+        { icon: "💬", title: "客服话术/SOP", desc: "现有客服回复模板" },
+    ],
+    "教育": [
+        { icon: "📚", title: "课程介绍/大纲", desc: "课程内容、目标、适合人群" },
+        { icon: "❓", title: "常见咨询问题", desc: "报名流程、价格、师资相关问题" },
+        { icon: "📋", title: "学员服务手册", desc: "上课流程、请假规则、退费政策" },
+        { icon: "👩‍🏫", title: "师资/机构介绍", desc: "机构背景、师资力量介绍" },
+    ],
+    "金融": [
+        { icon: "📄", title: "产品说明书", desc: "理财/保险/贷款产品详情" },
+        { icon: "❓", title: "FAQ/合规话术", desc: "合规的标准问答" },
+        { icon: "📋", title: "业务流程说明", desc: "开户、理赔、还款等流程" },
+        { icon: "⚖️", title: "条款/免责声明", desc: "合同条款、风险提示" },
+    ],
+    "医疗": [
+        { icon: "🏥", title: "科室/服务介绍", desc: "各科室诊疗范围、专家信息" },
+        { icon: "📋", title: "就诊流程", desc: "挂号、就诊、取药、住院流程" },
+        { icon: "❓", title: "常见咨询问题", desc: "营业时间、医保、费用相关" },
+        { icon: "💊", title: "健康科普资料", desc: "常见疾病知识、用药指导" },
+    ],
+    "餐饮": [
+        { icon: "📜", title: "菜单/产品目录", desc: "菜品名称、价格、食材、口味" },
+        { icon: "🏪", title: "门店信息", desc: "各门店地址、营业时间、联系方式" },
+        { icon: "❓", title: "常见问题", desc: "预订、外卖、过敏原、优惠相关" },
+        { icon: "📦", title: "外卖/配送规则", desc: "配送范围、时效、最低消费" },
+    ],
+    "科技": [
+        { icon: "📖", title: "产品文档/API文档", desc: "产品功能说明、技术文档" },
+        { icon: "❓", title: "FAQ/知识库", desc: "常见技术问题及解决方案" },
+        { icon: "📋", title: "使用教程", desc: "操作指南、最佳实践" },
+        { icon: "💰", title: "定价/方案说明", desc: "版本区别、价格、功能对比" },
+    ],
+    "制造": [
+        { icon: "📊", title: "产品规格书", desc: "产品技术参数、材质、工艺" },
+        { icon: "📖", title: "操作手册", desc: "设备使用、维护保养说明" },
+        { icon: "🔧", title: "故障排除指南", desc: "常见故障代码及解决方法" },
+        { icon: "❓", title: "FAQ", desc: "采购、交期、定制相关问题" },
+    ],
+    "跨境": [
+        { icon: "📦", title: "产品目录/Listing", desc: "各平台商品信息、标题、描述、卖点" },
+        { icon: "🌐", title: "多语言FAQ", desc: "中英文（或其他语种）常见客户问题及回复" },
+        { icon: "🚢", title: "物流/关税政策", desc: "跨境物流方案、时效、关税规则" },
+        { icon: "📋", title: "退换货/售后政策", desc: "跨境退货流程、海外仓退货规则" },
+        { icon: "💬", title: "客服话术/SOP", desc: "现有跨境客服回复模板（中英文）" },
+        { icon: "📄", title: "平台规则摘要", desc: "Amazon/Shopify/TikTok等平台规则要点" },
+    ],
+    "政务": [
+        { icon: "📋", title: "办事指南/流程", desc: "各类业务办理流程、所需材料清单" },
+        { icon: "❓", title: "常见咨询问题", desc: "群众经常问的政策、办事相关问题" },
+        { icon: "📄", title: "政策文件/公告", desc: "相关政策法规、通知公告" },
+        { icon: "🏢", title: "部门/窗口介绍", desc: "各部门职能、联系方式、办公时间" },
+        { icon: "📝", title: "表单/模板", desc: "常用申请表、填写示例" },
+    ],
+    "其他": [
+        { icon: "📄", title: "产品/服务介绍", desc: "您的核心产品或服务说明" },
+        { icon: "❓", title: "FAQ/常见问题", desc: "客户经常问的问题" },
+        { icon: "📋", title: "业务流程文档", desc: "服务流程、操作指南" },
+        { icon: "📁", title: "其他相关资料", desc: "任何有助于AI理解您业务的材料" },
+    ],
+};
+
+let selectedIndustry = '';
+let materialFiles = {};  // { category_index: [files] }
+let bulkFilesList = [];
+
+// Auto-select industry from URL parameter (disabled)
+// const urlParams = new URLSearchParams(window.location.search);
+// const preselect = urlParams.get('industry');
+
+// Industry selection
+document.getElementById('industryGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('.industry-btn');
+    if (!btn) return;
+    
+    document.querySelectorAll('.industry-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedIndustry = btn.dataset.val;
+    
+    showMaterials(selectedIndustry);
+    updateProgress();
+});
+
+function showMaterials(industry) {
+    const materials = INDUSTRY_MATERIALS[industry];
+    if (!materials) return;
+    
+    const list = document.getElementById('materialList');
+    list.innerHTML = materials.map((m, idx) => `
+        <div class="material-item">
+            <div class="mi-icon">${m.icon}</div>
+            <div class="mi-content">
+                <div class="mi-title">${m.title}</div>
+                <div class="mi-desc">${m.desc}</div>
+                <div class="mi-upload">
+                    <label class="upload-btn">
+                        📎 选择文件
+                        <input type="file" multiple onchange="handleMaterialFile(event, ${idx})" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.pptx">
+                    </label>
+                    <div class="file-tags" id="tags-${idx}"></div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Show cards with animation
+    document.getElementById('materialCard').classList.add('show');
+    document.getElementById('scenarioCard').classList.add('show');
+    document.getElementById('submitSection').classList.add('show');
+    
+    document.getElementById('materialCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function handleMaterialFile(event, idx) {
+    const files = Array.from(event.target.files);
+    if (!materialFiles[idx]) materialFiles[idx] = [];
+    materialFiles[idx].push(...files);
+    renderTags(idx);
+    updateProgress();
+}
+
+function renderTags(idx) {
+    const container = document.getElementById(`tags-${idx}`);
+    container.innerHTML = (materialFiles[idx] || []).map((f, fi) => `
+        <span class="file-tag">📄 ${f.name} <span class="remove" onclick="removeMFile(${idx},${fi})">✕</span></span>
+    `).join('');
+}
+
+function removeMFile(idx, fi) {
+    materialFiles[idx].splice(fi, 1);
+    if (materialFiles[idx].length === 0) delete materialFiles[idx];
+    renderTags(idx);
+    updateProgress();
+}
+
+// Bulk upload
+const bulkUpload = document.getElementById('bulkUpload');
+const bulkInput = document.getElementById('bulkInput');
+
+bulkUpload.addEventListener('click', () => bulkInput.click());
+bulkUpload.addEventListener('dragover', e => { e.preventDefault(); bulkUpload.classList.add('dragover'); });
+bulkUpload.addEventListener('dragleave', () => bulkUpload.classList.remove('dragover'));
+bulkUpload.addEventListener('drop', e => { e.preventDefault(); bulkUpload.classList.remove('dragover'); addBulkFiles(e.dataTransfer.files); });
+bulkInput.addEventListener('change', e => addBulkFiles(e.target.files));
+
+function addBulkFiles(files) {
+    bulkFilesList.push(...Array.from(files));
+    renderBulkFiles();
+    updateProgress();
+}
+
+function renderBulkFiles() {
+    document.getElementById('bulkFiles').innerHTML = bulkFilesList.map((f, i) => `
+        <span class="file-tag">📄 ${f.name} <span class="remove" onclick="removeBulk(${i})">✕</span></span>
+    `).join('');
+}
+
+function removeBulk(i) { bulkFilesList.splice(i, 1); renderBulkFiles(); updateProgress(); }
+
+// Close success overlay and reset for new submission
+function closeSuccess() {
+    document.getElementById('successOverlay').classList.remove('show');
+    document.getElementById('submitBtn').disabled = false;
+    document.getElementById('submitBtn').textContent = '确认提交 🚀';
+    // Clear file uploads for new submission
+    materialFiles = {};
+    bulkFilesList = [];
+    document.getElementById('bulkFiles').innerHTML = '';
+    document.querySelectorAll('.file-tags').forEach(el => el.innerHTML = '');
+    updateProgress();
+}
+
+// 进度条更新
+function updateProgress() {
+    const company = document.getElementById('company').value.trim();
+    const hasIndustry = selectedIndustry !== '';
+    const hasFiles = Object.keys(materialFiles).length > 0 || bulkFilesList.length > 0;
+    
+    let step = 1;
+    if (company) step = 2;
+    if (company && hasIndustry) step = 3;
+    if (company && hasIndustry && hasFiles) step = 4;
+    
+    const steps = document.querySelectorAll('.progress-step');
+    steps.forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i + 1 < step) s.classList.add('done');
+        else if (i + 1 === step) s.classList.add('active');
+    });
+    
+    // 进度条宽度
+    const track = document.getElementById('progressTrack');
+    const pct = ((step - 1) / 3) * 100;
+    track.style.width = pct + '%';
+}
+
+// 监听输入变化
+document.getElementById('company').addEventListener('input', updateProgress);
+
+// Submit
+async function handleSubmit() {
+    const company = document.getElementById('company').value.trim();
+    
+    if (!company) { alert('请填写企业名称'); return; }
+    if (!selectedIndustry) { alert('请选择行业'); return; }
+    
+    const formData = new FormData();
+    formData.append('company', company);
+    formData.append('industry', selectedIndustry);
+    formData.append('scenario', document.getElementById('scenario').value);
+    formData.append('extra', document.getElementById('extra').value);
+    
+    // 文件分类映射
+    const catMap = {};
+    const materials = INDUSTRY_MATERIALS[selectedIndustry] || [];
+    
+    // 分类文件
+    Object.keys(materialFiles).forEach(idx => {
+        const catName = materials[idx] ? materials[idx].title : '未分类';
+        materialFiles[idx].forEach(f => {
+            formData.append('files', f);
+            catMap[f.name] = catName;
+        });
+    });
+    // 批量上传文件
+    bulkFilesList.forEach(f => {
+        formData.append('files', f);
+        catMap[f.name] = '批量上传';
+    });
+    
+    formData.append('categories', JSON.stringify(catMap));
+
+    document.getElementById('submitBtn').disabled = true;
+    document.getElementById('submitBtn').textContent = '提交中...';
+
+    try {
+        const API_BASE = window.location.port === '' ? '' : `http://localhost:8000`;
+        const res = await fetch(`${API_BASE}/api/submit`, { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if (data.success) {
+            document.getElementById('successOverlay').classList.add('show');
+            console.log('提交成功:', data);
+        } else {
+            alert('提交失败: ' + (data.detail || '未知错误'));
+            document.getElementById('submitBtn').disabled = false;
+            document.getElementById('submitBtn').textContent = '确认提交 🚀';
+        }
+    } catch (err) {
+        console.error(err);
+        alert('网络错误，请确认后端已启动 (python main.py)');
+        document.getElementById('submitBtn').disabled = false;
+        document.getElementById('submitBtn').textContent = '确认提交 🚀';
+    }
+}
+</script>
+<script>
+// 生成浮动粒子
+const particlesEl = document.getElementById('particles');
+const colors = ['rgba(102,126,234,0.4)', 'rgba(118,75,162,0.3)', 'rgba(69,199,214,0.35)', 'rgba(150,150,200,0.25)'];
+for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random() * 4 + 2;
+    p.style.cssText = `
+        width:${size}px; height:${size}px;
+        left:${Math.random()*100}%;
+        background:${colors[Math.floor(Math.random()*colors.length)]};
+        animation-duration:${Math.random()*15+10}s;
+        animation-delay:${Math.random()*10}s;
+    `;
+    particlesEl.appendChild(p);
+}
+</script>
+</body>
+</html>
