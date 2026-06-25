@@ -25,6 +25,10 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import uvicorn
 import secrets
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 # 加载 .env 文件
 try:
     from dotenv import load_dotenv
@@ -64,6 +68,11 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 app = FastAPI(title="Agent知识库后端", version="3.0.0", docs_url=None, redoc_url=None)
+
+# 速率限制
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -301,7 +310,8 @@ def sync_to_feishu(company, industry, file_count, scenario="", uploaded_files=No
 
 # ===================== API 路由 =====================
 @app.post("/api/submit")
-async def submit_form(company: str = Form(...), industry: str = Form(...), scenario: str = Form(""),
+@limiter.limit("5/minute")
+async def submit_form(request: Request, company: str = Form(...), industry: str = Form(...), scenario: str = Form(""),
                       extra: str = Form(""), files: list[UploadFile] = File(default=[]), categories: str = Form("")):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
