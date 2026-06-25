@@ -44,3 +44,5 @@ agent-form-v3/
 | FEISHU_APP_SECRET | 飞书应用密钥 |
 | FEISHU_APP_TOKEN | 飞书多维表格 token |
 | FEISHU_TABLE_ID | 飞书数据表 ID |
+
+- 🔒 管理后台 HTTP Basic Auth 鉴权保护
