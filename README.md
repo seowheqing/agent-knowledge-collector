@@ -47,3 +47,4 @@ agent-form-v3/
 | FEISHU_TABLE_ID | 飞书数据表 ID |
 
 - 🔒 管理后台 HTTP Basic Auth 鉴权保护
+- 防刷功能（1min max 5次 access）
