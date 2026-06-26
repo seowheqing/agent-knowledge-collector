@@ -50,9 +50,9 @@ agent-form-v3/
 - 防刷功能（1min max 5次提交）
 
 ## 测试
-pytest test_main.py
-test_parse_qa           PASSED ✅  — QA提取正常
-test_parse_plain_text   PASSED ✅  — 段落分割正常
-test_unknown_format     PASSED ✅  — 未知格式不崩溃
-test_empty_file         PASSED ✅  — 空文件不报错
-test_archive_detection  PASSED ✅  — 压缩包识别正确
+- pytest test_main.py
+- test_parse_qa           PASSED ✅  — QA提取正常
+- test_parse_plain_text   PASSED ✅  — 段落分割正常
+- test_unknown_format     PASSED ✅  — 未知格式不崩溃
+- test_empty_file         PASSED ✅  — 空文件不报错
+- test_archive_detection  PASSED ✅  — 压缩包识别正确
