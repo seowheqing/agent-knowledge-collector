@@ -309,11 +309,63 @@ def sync_to_feishu(company, industry, file_count, scenario="", extra="", uploade
     print(f"  {'✅' if ok else '⚠️'} 飞书同步{'成功' if ok else '失败'}: {company}")
     return ok
 
+
+# ===================== 秒懂知识库推送 =====================
+MIAODONG_ACCESS_KEY_ID = os.environ.get("MIAODONG_ACCESS_KEY_ID", "")
+MIAODONG_ACCESS_KEY_SECRET = os.environ.get("MIAODONG_ACCESS_KEY_SECRET", "")
+MIAODONG_BASE_URL = "https://insight.juzibot.com/openapi"
+MIAODONG_KB_ID = os.environ.get("MIAODONG_KB_ID", "")
+
+
+def get_miaodong_token():
+    if not MIAODONG_ACCESS_KEY_ID or not MIAODONG_ACCESS_KEY_SECRET:
+        return ""
+    import requests as req
+    resp = req.post(f"{MIAODONG_BASE_URL}/get-access-token", json={
+        "accessKeyId": MIAODONG_ACCESS_KEY_ID,
+        "accessKeySecret": MIAODONG_ACCESS_KEY_SECRET
+    })
+    data = resp.json()
+    if data.get("code") == 0 and "data" in data:
+        return data["data"].get("accessToken", "")
+    return ""
+
+
+def push_to_miaodong(saved_files: list):
+    """将文档类文件推送到秒懂知识库"""
+    if not MIAODONG_KB_ID:
+        print("  ⚠️ 秒懂未配置，跳过")
+        return
+    import requests as req
+    token = get_miaodong_token()
+    if not token: return
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    for f_info in saved_files:
+        filepath, filename = f_info.get("path",""), f_info.get("name","")
+        ext = Path(filename).suffix.lower()
+        if ext not in (".pdf",".doc",".docx",".xls",".xlsx",".txt",".csv",".md"):
+            continue
+        try:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            if not content.strip(): continue
+            resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create-with-auto-segment",
+                headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "name": filename, "content": content[:50000]})
+            data = resp.json()
+            if data.get("code") == 0:
+                print(f"  ✅ 秒懂推送成功: {filename}")
+            else:
+                print(f"  ⚠️ 秒懂推送失败: {filename} - {data.get('message', data.get('msg', ''))}")
+        except Exception as e:
+            print(f"  ⚠️ 秒懂推送异常: {filename} - {e}")
+
+
 # ===================== API 路由 =====================
 @app.post("/api/submit")
 @limiter.limit("5/minute")
 async def submit_form(request: Request, company: str = Form(...), industry: str = Form(...), scenario: str = Form(""),
                       extra: str = Form(""), files: list[UploadFile] = File(default=[]), categories: str = Form("")):
+    import threading
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute("INSERT INTO submissions (company, industry, scenario, extra) VALUES (?, ?, ?, ?)", (company, industry, scenario, extra))
@@ -322,7 +374,9 @@ async def submit_form(request: Request, company: str = Form(...), industry: str 
     except: cat_map = {}
     company_dir = UPLOAD_DIR / company.replace(" ","_").replace("/","_")
     company_dir.mkdir(parents=True, exist_ok=True)
-    results = []
+    
+    # 同步保存文件（快速）
+    saved_files = []
     for file in files:
         if not file.filename: continue
         category = cat_map.get(file.filename, "未分类")
@@ -335,25 +389,38 @@ async def submit_form(request: Request, company: str = Form(...), industry: str 
         c.execute("INSERT INTO files (submission_id, category, original_name, saved_path, file_type, file_size) VALUES (?,?,?,?,?,?)",
                   (submission_id, category, file.filename, str(save_path), file.content_type, len(content)))
         file_id = c.lastrowid
-        entries = parse_file_with_ai(str(save_path), file.filename, category)
-        for entry in entries:
-            c.execute("INSERT INTO knowledge_entries (submission_id, file_id, entry_type, title, content, metadata) VALUES (?,?,?,?,?,?)",
-                      (submission_id, file_id, entry["type"], entry["title"], entry["content"],
-                       json.dumps({"source_file": file.filename, "category": category}, ensure_ascii=False)))
-        results.append({"filename": file.filename, "category": category, "entries_count": len(entries)})
+        saved_files.append({"file_id": file_id, "path": str(save_path), "name": file.filename, "category": category})
     conn.commit(); conn.close()
-    try:
-        feishu_files = []
-        conn2 = sqlite3.connect(DB_PATH); c2 = conn2.cursor()
-        for r in results:
-            c2.execute("SELECT saved_path, original_name, category FROM files WHERE submission_id=? AND original_name=?", (submission_id, r["filename"]))
-            row = c2.fetchone()
-            if row: feishu_files.append({"path": row[0], "name": row[1], "category": row[2]})
-        conn2.close()
-        sync_to_feishu(company, industry, len(results), scenario, extra, feishu_files)
-    except Exception as e:
-        print(f"  ⚠️ 飞书同步异常: {e}")
-    return {"success": True, "submission_id": submission_id, "company": company, "files_processed": len(results), "details": results}
+    
+    # 后台异步处理
+    def background_process():
+        print(f"  🔄 后台处理开始: {company} ({len(saved_files)}个文件)")
+        # AI解析
+        for f_info in saved_files:
+            try:
+                entries = parse_file_with_ai(f_info["path"], f_info["name"], f_info["category"])
+                conn3 = sqlite3.connect(DB_PATH); c3 = conn3.cursor()
+                for entry in entries:
+                    c3.execute("INSERT INTO knowledge_entries (submission_id, file_id, entry_type, title, content, metadata) VALUES (?,?,?,?,?,?)",
+                        (submission_id, f_info["file_id"], entry["type"], entry["title"], entry["content"],
+                         json.dumps({"source_file": f_info["name"], "category": f_info["category"]}, ensure_ascii=False)))
+                conn3.commit(); conn3.close()
+            except Exception as e:
+                print(f"  ⚠️ AI解析异常: {f_info['name']} - {e}")
+        # 飞书同步
+        try:
+            sync_to_feishu(company, industry, len(saved_files), scenario, extra, saved_files)
+        except Exception as e:
+            print(f"  ⚠️ 飞书同步异常: {e}")
+        # 秒懂推送
+        try:
+            push_to_miaodong(saved_files)
+        except Exception as e:
+            print(f"  ⚠️ 秒懂推送异常: {e}")
+        print(f"  ✅ 后台处理完成: {company}")
+    
+    threading.Thread(target=background_process, daemon=True).start()
+    return {"success": True, "submission_id": submission_id, "company": company, "files_processed": len(saved_files), "message": "提交成功，文件正在后台处理中"}
 
 @app.get("/api/submissions")
 async def list_submissions(user: str = Depends(verify_admin)):
