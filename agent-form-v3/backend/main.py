@@ -346,16 +346,43 @@ def push_to_miaodong(saved_files: list):
         if ext not in (".pdf",".doc",".docx",".xls",".xlsx",".txt",".csv",".md"):
             continue
         try:
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-            if not content.strip(): continue
+            # 提取文本内容（不是直接读文件）
+            content = ""
+            if ext == ".pdf":
+                entries = parse_pdf(filepath)
+                content = "\n\n".join(e["content"] for e in entries if e["type"] != "error")
+            elif ext in (".doc", ".docx"):
+                entries = parse_docx(filepath)
+                content = "\n\n".join(e["content"] for e in entries if e["type"] != "error")
+            elif ext in (".xls", ".xlsx"):
+                entries = parse_excel(filepath)
+                content = "\n\n".join(e["content"] for e in entries if e["type"] != "error")
+            else:
+                with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+            
+            if not content.strip():
+                print(f"  ⚠️ 秒懂跳过（无内容）: {filename}")
+                continue
+            
+            # 创建文档（带内容）
             resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create",
                 headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "name": filename, "content": content[:50000]})
             data = resp.json()
-            if data.get("code") == 0:
-                print(f"  ✅ 秒懂推送成功: {filename}")
-            else:
-                print(f"  ⚠️ 秒懂推送失败: {filename} - {data.get('message', data.get('msg', ''))}")
+            if data.get("code") != 0:
+                print(f"  ⚠️ 秒懂创建文档失败: {filename} - {data.get('message','')}")
+                continue
+            doc_id = data["data"]["id"]
+            
+            # 写入段落
+            paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
+            if not paragraphs: paragraphs = [content[:1000]]
+            ok = 0
+            for para in paragraphs[:50]:
+                r = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/paragraph/create",
+                    headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "docId": doc_id, "content": para[:1000]})
+                if r.json().get("code") == 0: ok += 1
+            print(f"  ✅ 秒懂推送成功: {filename} (ID:{doc_id}, {ok}段)")
         except Exception as e:
             print(f"  ⚠️ 秒懂推送异常: {filename} - {e}")
 
