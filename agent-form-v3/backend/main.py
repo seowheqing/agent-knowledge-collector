@@ -332,7 +332,7 @@ def get_miaodong_token():
 
 
 def push_to_miaodong(saved_files: list):
-    """将文档类文件推送到秒懂知识库"""
+    """将文档类文件推送到秒懂知识库（使用 create-with-content 自动分段接口）"""
     if not MIAODONG_KB_ID:
         print("  ⚠️ 秒懂未配置，跳过")
         return
@@ -342,11 +342,11 @@ def push_to_miaodong(saved_files: list):
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     for f_info in saved_files:
         filepath, filename = f_info.get("path",""), f_info.get("name","")
+        category = f_info.get("category", "未分类")
         ext = Path(filename).suffix.lower()
         if ext not in (".pdf",".doc",".docx",".xls",".xlsx",".txt",".csv",".md"):
             continue
         try:
-            # 提取文本内容（不是直接读文件）
             content = ""
             if ext == ".pdf":
                 entries = parse_pdf(filepath)
@@ -360,45 +360,19 @@ def push_to_miaodong(saved_files: list):
             else:
                 with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                     content = f.read()
-            
             if not content.strip():
                 print(f"  ⚠️ 秒懂跳过（无内容）: {filename}")
                 continue
-            
-            # 创建文档（带内容）
-            resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create",
-                headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "name": filename, "content": content[:50000]})
+            # 使用 create-with-content 接口（自动分段）
+            resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create-with-content",
+                headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "name": filename,
+                    "content": content[:50000], "prefix": f"[{category}] {filename}",
+                    "metadata": {"category": category, "source": "agent-form"}})
             data = resp.json()
-            if data.get("code") != 0:
-                print(f"  ⚠️ 秒懂创建文档失败: {filename} - {data.get('message','')}")
-                continue
-            doc_id = data["data"]["id"]
-            
-            # 写入段落（按1000字拆分，不丢内容）
-            chunks = []
-            for para in paragraphs[:100]:
-                if len(para) <= 1000:
-                    chunks.append(para)
-                else:
-                    remaining = para
-                    while remaining:
-                        if len(remaining) <= 1000:
-                            chunks.append(remaining)
-                            break
-                        cut = remaining[:1000].rfind('。')
-                        if cut < 200: cut = remaining[:1000].rfind('.')
-                        if cut < 200: cut = remaining[:1000].rfind('\n')
-                        if cut < 200: cut = 1000
-                        else: cut += 1
-                        chunks.append(remaining[:cut].strip())
-                        remaining = remaining[cut:].strip()
-            ok = 0
-            for chunk in chunks[:100]:
-                if not chunk.strip(): continue
-                r = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/paragraph/create",
-                    headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "docId": doc_id, "content": chunk})
-                if r.json().get("code") == 0: ok += 1
-            print(f"  ✅ 秒懂推送成功: {filename} (ID:{doc_id}, {ok}段)")
+            if data.get("code") == 0:
+                print(f"  ✅ 秒懂推送成功: {filename} (ID:{data['data']['id']})")
+            else:
+                print(f"  ⚠️ 秒懂推送失败: {filename} - {data.get('message', data.get('msg', ''))}")
         except Exception as e:
             print(f"  ⚠️ 秒懂推送异常: {filename} - {e}")
 
