@@ -349,7 +349,7 @@ def push_to_miaodong(saved_files: list):
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
             if not content.strip(): continue
-            resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create-with-auto-segment",
+            resp = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/create",
                 headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "name": filename, "content": content[:50000]})
             data = resp.json()
             if data.get("code") == 0:
