@@ -374,13 +374,29 @@ def push_to_miaodong(saved_files: list):
                 continue
             doc_id = data["data"]["id"]
             
-            # 写入段落
-            paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
-            if not paragraphs: paragraphs = [content[:1000]]
+            # 写入段落（按1000字拆分，不丢内容）
+            chunks = []
+            for para in paragraphs[:100]:
+                if len(para) <= 1000:
+                    chunks.append(para)
+                else:
+                    remaining = para
+                    while remaining:
+                        if len(remaining) <= 1000:
+                            chunks.append(remaining)
+                            break
+                        cut = remaining[:1000].rfind('。')
+                        if cut < 200: cut = remaining[:1000].rfind('.')
+                        if cut < 200: cut = remaining[:1000].rfind('\n')
+                        if cut < 200: cut = 1000
+                        else: cut += 1
+                        chunks.append(remaining[:cut].strip())
+                        remaining = remaining[cut:].strip()
             ok = 0
-            for para in paragraphs[:50]:
+            for chunk in chunks[:100]:
+                if not chunk.strip(): continue
                 r = req.post(f"{MIAODONG_BASE_URL}/knowledge-base/doc/paragraph/create",
-                    headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "docId": doc_id, "content": para[:1000]})
+                    headers=headers, json={"knowledgeBaseId": MIAODONG_KB_ID, "docId": doc_id, "content": chunk})
                 if r.json().get("code") == 0: ok += 1
             print(f"  ✅ 秒懂推送成功: {filename} (ID:{doc_id}, {ok}段)")
         except Exception as e:
