@@ -282,7 +282,7 @@ def upload_file_to_feishu(token: str, filepath: str, filename: str) -> str:
     data = resp.json()
     return data["data"]["file_token"] if data.get("code") == 0 else ""
 
-def sync_to_feishu(company, industry, file_count, scenario="", uploaded_files=None):
+def sync_to_feishu(company, industry, file_count, scenario="", extra="", uploaded_files=None):
     if not FEISHU_APP_TOKEN or not FEISHU_TABLE_ID:
         print("  ⚠️ 飞书未配置，跳过同步")
         return False
@@ -299,7 +299,8 @@ def sync_to_feishu(company, industry, file_count, scenario="", uploaded_files=No
                     file_tokens.append({"file_token": ft})
                     categories.append(f"{cat}: {fn}")
     record = {"fields": {"企业名称": company, "行业": industry, "提交日期": int(datetime.now().timestamp()*1000), "文件数": file_count}}
-    if scenario and scenario.strip(): record["fields"]["场景需求"] = scenario.strip()
+    combined_scenario = (scenario.strip() if scenario else "") + ("\n\n补充：" + extra.strip() if extra and extra.strip() else "")
+    if combined_scenario.strip(): record["fields"]["场景需求"] = combined_scenario.strip()
     if file_tokens: record["fields"]["附件"] = file_tokens
     if categories: record["fields"]["附件分类"] = "\n".join(categories)
     resp = req.post(f"https://open.feishu.cn/open-apis/bitable/v1/apps/{FEISHU_APP_TOKEN}/tables/{FEISHU_TABLE_ID}/records",
@@ -349,7 +350,7 @@ async def submit_form(request: Request, company: str = Form(...), industry: str 
             row = c2.fetchone()
             if row: feishu_files.append({"path": row[0], "name": row[1], "category": row[2]})
         conn2.close()
-        sync_to_feishu(company, industry, len(results), scenario, feishu_files)
+        sync_to_feishu(company, industry, len(results), scenario, extra, feishu_files)
     except Exception as e:
         print(f"  ⚠️ 飞书同步异常: {e}")
     return {"success": True, "submission_id": submission_id, "company": company, "files_processed": len(results), "details": results}
