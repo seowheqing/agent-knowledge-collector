@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
 <title>Agent知识库材料收集</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -317,7 +318,7 @@ body::before {
         <div class="bulk-upload" id="bulkUpload">
             <div class="bu-icon">📦</div>
             <div class="bu-text">或者直接拖拽/点击上传打包文件</div>
-            <div class="bu-hint">支持 ZIP/RAR 打包上传，也可以多选散文件 | PDF、Word、Excel、图片均可</div>
+            <div class="bu-hint">支持 PDF、Word、Excel、图片、ZIP 等 | 单文件最大 20MB | 单次最多 20 个文件</div>
             <input type="file" id="bulkInput" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar,.jpg,.jpeg,.png,.pptx" hidden>
         </div>
         <div class="file-tags" id="bulkFiles"></div>
@@ -349,8 +350,14 @@ body::before {
         <span class="close-btn" onclick="closeSuccess()">✕</span>
         <div class="icon">🎉</div>
         <h3>提交成功！</h3>
-        <p>我们已收到您的材料<br>工作人员将在 <strong>1-2个工作日</strong> 内与您联系<br>为您搭建专属Agent</p>
-        <p style="margin-top:16px;font-size:13px;color:#888">如需补充材料，可关闭此窗口继续提交</p>
+        <p>我们已收到您的材料<br>AI 正在后台解析中，通常 <strong>1-3 分钟</strong> 即可完成</p>
+        <div id="statusArea" style="margin-top:16px;padding:12px 16px;background:#f8f9fb;border-radius:10px;font-size:13px;color:#555">
+            <span id="statusIcon">⏳</span> <span id="statusText">正在处理中...</span>
+        </div>
+        <p style="margin-top:16px;font-size:13px;color:#666;line-height:1.6">
+            💡 <strong>需要补充材料？</strong>直接关闭此窗口，用同一企业名称再次提交即可。<br>新材料会自动追加到您的专属知识库中。
+        </p>
+        <p style="margin-top:12px;font-size:12px;color:#999">工作人员将在 1-2 个工作日内与您联系搭建 Agent</p>
     </div>
 </div>
 
@@ -482,9 +489,22 @@ function showMaterials(industry) {
 }
 
 function handleMaterialFile(event, idx) {
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    const maxFiles = 20;
     const files = Array.from(event.target.files);
     if (!materialFiles[idx]) materialFiles[idx] = [];
-    materialFiles[idx].push(...files);
+    for (const f of files) {
+        if (f.size > maxSize) {
+            alert(`文件 "${f.name}" 超过 20MB 限制，请压缩后重试`);
+            continue;
+        }
+        const totalCount = Object.values(materialFiles).flat().length + bulkFilesList.length;
+        if (totalCount >= maxFiles) {
+            alert(`单次最多上传 ${maxFiles} 个文件`);
+            break;
+        }
+        materialFiles[idx].push(f);
+    }
     renderTags(idx);
     updateProgress();
 }
@@ -514,7 +534,19 @@ bulkUpload.addEventListener('drop', e => { e.preventDefault(); bulkUpload.classL
 bulkInput.addEventListener('change', e => addBulkFiles(e.target.files));
 
 function addBulkFiles(files) {
-    bulkFilesList.push(...Array.from(files));
+    const maxSize = 20 * 1024 * 1024; // 20MB
+    const maxFiles = 20;
+    for (const f of Array.from(files)) {
+        if (f.size > maxSize) {
+            alert(`文件 "${f.name}" 超过 20MB 限制，请压缩后重试`);
+            continue;
+        }
+        if (bulkFilesList.length + Object.values(materialFiles).flat().length >= maxFiles) {
+            alert(`单次最多上传 ${maxFiles} 个文件`);
+            break;
+        }
+        bulkFilesList.push(f);
+    }
     renderBulkFiles();
     updateProgress();
 }
@@ -532,12 +564,48 @@ function closeSuccess() {
     document.getElementById('successOverlay').classList.remove('show');
     document.getElementById('submitBtn').disabled = false;
     document.getElementById('submitBtn').textContent = '确认提交 🚀';
+    // Reset status area
+    document.getElementById('statusIcon').textContent = '⏳';
+    document.getElementById('statusText').textContent = '正在处理中...';
     // Clear file uploads for new submission
     materialFiles = {};
     bulkFilesList = [];
     document.getElementById('bulkFiles').innerHTML = '';
     document.querySelectorAll('.file-tags').forEach(el => el.innerHTML = '');
     updateProgress();
+}
+
+// 轮询提交状态
+let pollTimer = null;
+function pollStatus(submissionId) {
+    const API_BASE = window.location.port === '' ? '' : `http://localhost:8000`;
+    let attempts = 0;
+    const maxAttempts = 60; // 最多轮询 60 次 (约 3 分钟)
+
+    function check() {
+        attempts++;
+        fetch(`${API_BASE}/api/status/${submissionId}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'done') {
+                    document.getElementById('statusIcon').textContent = '✅';
+                    document.getElementById('statusText').textContent =
+                        `处理完成！已生成 ${d.entry_count} 条知识条目`;
+                    if (pollTimer) clearInterval(pollTimer);
+                } else if (attempts >= maxAttempts) {
+                    document.getElementById('statusIcon').textContent = '⏰';
+                    document.getElementById('statusText').textContent = '处理时间较长，请稍后在后台查看结果';
+                    if (pollTimer) clearInterval(pollTimer);
+                }
+            })
+            .catch(() => {});
+    }
+
+    // 3 秒后开始轮询，每 3 秒一次
+    setTimeout(() => {
+        check();
+        pollTimer = setInterval(check, 3000);
+    }, 3000);
 }
 
 // 进度条更新
@@ -564,8 +632,17 @@ function updateProgress() {
     track.style.width = pct + '%';
 }
 
-// 监听输入变化
-document.getElementById('company').addEventListener('input', updateProgress);
+// 监听输入变化 + 记忆企业名称
+const companyInput = document.getElementById('company');
+const savedCompany = localStorage.getItem('agent_form_company');
+if (savedCompany) {
+    companyInput.value = savedCompany;
+    updateProgress();
+}
+companyInput.addEventListener('input', () => {
+    localStorage.setItem('agent_form_company', companyInput.value);
+    updateProgress();
+});
 
 // Submit
 async function handleSubmit() {
@@ -611,6 +688,8 @@ async function handleSubmit() {
         if (data.success) {
             document.getElementById('successOverlay').classList.add('show');
             console.log('提交成功:', data);
+            // 开始轮询处理状态
+            pollStatus(data.submission_id);
         } else {
             alert('提交失败: ' + (data.detail || '未知错误'));
             document.getElementById('submitBtn').disabled = false;
