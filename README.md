@@ -34,13 +34,28 @@ python main.py
 ## 功能
 
 - 📋 多行业材料收集表单（11个行业 + 动态材料引导）
+  - <img width="867" height="878" alt="image" src="https://github.com/user-attachments/assets/14759335-a742-4648-8753-c9161d7c21b2" />
+  - <img width="772" height="902" alt="image" src="https://github.com/user-attachments/assets/5d430b35-b753-4e3b-bb9c-e5c925573e7b" />
+  - <img width="982" height="566" alt="image" src="https://github.com/user-attachments/assets/5d91fd61-06bb-4a32-97a1-524a5f8c2022" />
+
+
 - 🤖 AI 智能解析（通义千问 Plus 文本整理 + VL 图片识别）
 - 📊 飞书多维表格自动同步（含附件上传）
+  - <img width="1517" height="852" alt="image" src="https://github.com/user-attachments/assets/34212a5a-60ab-4992-aa74-94b35e8f89c4" />
+
 - 📚 秒懂知识库自动推送（每公司独立知识库 + 文档自动分段）
+  - <img width="1852" height="906" alt="image" src="https://github.com/user-attachments/assets/0c08882e-e307-4d1e-ba37-0ac7c7b2b0b6" />
+  - <img width="1853" height="905" alt="image" src="https://github.com/user-attachments/assets/af9661c7-c228-4b5e-ac69-960f41b7924d" />
+  - <img width="1846" height="910" alt="image" src="https://github.com/user-attachments/assets/3bcc0860-1fc7-4791-8308-a83791c2d9bf" />
+
 - ⚡ 后台任务处理（FastAPI BackgroundTasks，用户提交秒回）
 - 📁 文件分类存储 + 管理后台
+  - <img width="1283" height="532" alt="image" src="https://github.com/user-attachments/assets/c64d91bb-b023-486c-89bc-8a71cc6fd3b2" />
+
 - 🔒 安全防护：
   - HTTP Basic Auth 管理后台鉴权
+  - <img width="557" height="197" alt="image" src="https://github.com/user-attachments/assets/4d47ecb9-b1c9-4d66-b2cc-0d4862190042" />
+
   - CORS 白名单限制
   - 文件名/目录名消毒（防路径遍历）
   - 输入校验（文件大小、数量、行业白名单）
